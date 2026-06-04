@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+        content="script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+    <title>FPT QA Agent v10.0 — Tổng Hợp Giờ Giảng FSC | Ultimate Master</title>
+    <meta name="description"
+        content="AI Agent tổng hợp và kiểm tra giờ giảng Giáo viên FSchool — Kiến trúc KWSR, xử lý 100% Offline">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="vendor/xlsx-js-style.min.js"></script>
+    <script src="vendor/chart.min.js"></script>
+</head>
+
+<body>
+
+    <!-- ══════════════════════════════════════════════════════════
+     PARTICLE CANVAS (background effect)
+    ══════════════════════════════════════════════════════════ -->
+    <canvas id="particles-canvas" aria-hidden="true"></canvas>
+
+    <!-- ══════════════════════════════════════════════════════════
+     FIXED HEADER
+    ══════════════════════════════════════════════════════════ -->
+    <header class="top-bar" id="top-bar">
+        <div class="top-bar__inner">
+            <div class="top-bar__brand">
+                <div class="brand-logo">
+                    <span class="brand-logo__fpt">FPT</span>
+                    <span class="brand-logo__qa">QA</span>
+                </div>
+                <div>
+                    <div class="top-bar__title">Agent Tổng Hợp Giờ Giảng FSC <span class="version-tag">v10.0</span>
+                    </div>
+                    <div class="top-bar__sub">Ultimate Master Engine | Offline Cleanroom Protocol | ISO 21001</div>
+                </div>
+            </div>
+            <div class="top-bar__badges">
+                <span class="badge badge--secure">
+                    <span class="badge__pulse"></span>
+                    🔒 Offline Secure
+                </span>
+                <span class="badge badge--level3">⚠ Level 3 Data</span>
+                <div class="status-dot-wrap"><span class="status-dot"></span>Cleanroom Active</div>
+            </div>
+        </div>
+        <!-- Progress bar for pipeline -->
+        <div class="top-bar__progress" id="top-progress">
+            <div class="top-bar__progress-fill" id="progress-fill"></div>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+
+        <!-- ══════════════════════════════════════════════════════
+         SECTION 1 — UPLOAD ZONE (Kéo thả)
+        ══════════════════════════════════════════════════════ -->
+        <section class="card step-card" id="sec-upload">
+            <div class="step-label"><span class="step-num">1</span> Upload vùng kéo thả (Data Ingestion)</div>
+            <p class="step-desc">Kéo thả 3 file Excel từ thư mục <code>01_Inputs/</code>. Toàn bộ dữ liệu xử lý 100%
+                cục bộ trên RAM trình duyệt — không rời khỏi máy tính.</p>
+
+            <div class="upload-grid">
+                <!-- File TH -->
+                <label class="drop-zone" id="dz-th" for="file-th">
+                    <div class="drop-zone__icon">📗</div>
+                    <div class="drop-zone__title">Giờ Giảng Khối TH</div>
+                    <div class="drop-zone__sub">FSCCG_Gio_giang_GV_Khoi_TH.xlsx</div>
+                    <div class="drop-zone__hint">Kéo thả hoặc click để chọn</div>
+                    <div class="drop-zone__glow"></div>
+                    <input type="file" id="file-th" accept=".xlsx,.xls" hidden>
+                </label>
+                <!-- File THCS -->
+                <label class="drop-zone" id="dz-thcs" for="file-thcs">
+                    <div class="drop-zone__icon">📘</div>
+                    <div class="drop-zone__title">Giờ Giảng Khối THCS/THPT</div>
+                    <div class="drop-zone__sub">FSCCG_Gio_giang_GV_Khoi_THCS.xlsx</div>
+                    <div class="drop-zone__hint">Kéo thả hoặc click để chọn</div>
+                    <div class="drop-zone__glow"></div>
+                    <input type="file" id="file-thcs" accept=".xlsx,.xls" hidden>
+                </label>
+                <!-- File Đổi tiết -->
+                <label class="drop-zone" id="dz-doi" for="file-doi">
+                    <div class="drop-zone__icon">🔄</div>
+                    <div class="drop-zone__title">Đổi Tiết / Dạy Thay</div>
+                    <div class="drop-zone__sub">FSCG_Doitiet_Daythay.xlsx</div>
+                    <div class="drop-zone__hint">Kéo thả hoặc click để chọn</div>
+                    <div class="drop-zone__glow"></div>
+                    <input type="file" id="file-doi" accept=".xlsx,.xls" hidden>
+                </label>
+            </div>
+
+            <div class="upload-footer">
+                <div class="file-status-list" id="file-status"></div>
+                <button class="btn btn--primary btn--lg btn--glow" id="btn-execute" disabled>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Thực thi Pipeline Đối Chiếu
+                </button>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════
+         SECTION 2 — KNOWLEDGE PANEL (Cơ sở làm sạch & chuẩn hóa)
+        ══════════════════════════════════════════════════════ -->
+        <section class="card knowledge-panel" id="sec-knowledge">
+            <div class="knowledge-header">
+                <div class="step-label" style="margin-bottom:0"><span class="step-num">2</span> Hiển thị Rules &amp;
+                    Skills (Cơ Sở Làm Sạch &amp; Chuẩn Hóa Dữ Liệu)
+                </div>
+                <span class="badge badge--orange">Knowledge Base Active</span>
+            </div>
+            <div class="knowledge-grid">
+                <div class="kcard kcard--red">
+                    <div class="kcard__icon">🛡️</div>
+                    <div class="kcard__tag">Security Rule R1</div>
+                    <div class="kcard__title">Offline Cleanroom</div>
+                    <div class="kcard__body">Khóa toàn bộ network request. Dữ liệu Level 3 (PII: SĐT, CCCD) không rời
+                        khỏi Browser RAM.</div>
+                </div>
+                <div class="kcard">
+                    <div class="kcard__icon">🧠</div>
+                    <div class="kcard__tag">Skill #1</div>
+                    <div class="kcard__title">Auto Detect Header</div>
+                    <div class="kcard__body">Bỏ qua dòng title merge, quét và nhận diện Header thực sự chứa từ khóa:
+                        <code>Ngày</code>, <code>Lớp</code>, <code>Username</code>.
+                    </div>
+                </div>
+                <div class="kcard">
+                    <div class="kcard__icon">🗺️</div>
+                    <div class="kcard__tag">Skill #2</div>
+                    <div class="kcard__title">Keyword Column Map</div>
+                    <div class="kcard__body">Map cột thông minh theo từ khóa: <code>gv ₄</code>→ GV Gốc,
+                        <code>username</code>→ Mã GV.
+                    </div>
+                </div>
+                <div class="kcard">
+                    <div class="kcard__icon">📅</div>
+                    <div class="kcard__tag">Skill #3</div>
+                    <div class="kcard__title">Date Standardization</div>
+                    <div class="kcard__body">Chuẩn hóa định dạng ngày <code>DD/MM</code>... →
+                        <code>YYYY-MM-DD</code>. Dùng v9.7 Brute-Force Logic.
+                    </div>
+                </div>
+                <div class="kcard">
+                    <div class="kcard__icon">🔂</div>
+                    <div class="kcard__tag">Skill #4</div>
+                    <div class="kcard__title">Deduplicate Wiper</div>
+                    <div class="kcard__body">Hash mỗi dòng bằng <code>JSON.stringify</code> + <code>Set()</code>. Loại
+                        bỏ 100% dòng trùng lặp.</div>
+                </div>
+                <div class="kcard kcard--blue">
+                    <div class="kcard__icon">⚖️</div>
+                    <div class="kcard__tag">Business Rules</div>
+                    <div class="kcard__title">Quy Đổi Giờ FSC (v10.0)</div>
+                    <div class="kcard__body">TH: <code>× 0.583h/tiết</code><br>THCS/THPT:
+                        <code>× 0.75h/tiết</code><br>Ngưỡng: <code>110h/tháng</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════
+         SECTION 3 — PIPELINE ANIMATION + LOG
+        ══════════════════════════════════════════════════════ -->
+        <section class="card step-card hidden" id="sec-pipeline">
+            <div class="step-label"><span class="step-num">3</span> Pipeline Animation (5 Bước Xử Lý)</div>
+
+            <div class="pipeline-track">
+                <div class="pipe-node" id="pn-1">
+                    <div class="pipe-node__dot"></div>
+                    <div class="pipe-node__label">Ingestion<br><span>Đọc File</span></div>
+                </div>
+                <div class="pipe-connector" id="pc-1"></div>
+                <div class="pipe-node" id="pn-2">
+                    <div class="pipe-node__dot"></div>
+                    <div class="pipe-node__label">Header Map<br><span>Nhận diện cột</span></div>
+                </div>
+                <div class="pipe-connector" id="pc-2"></div>
+                <div class="pipe-node" id="pn-3">
+                    <div class="pipe-node__dot"></div>
+                    <div class="pipe-node__label">Cleanse<br><span>Date + Dedup</span></div>
+                </div>
+                <div class="pipe-connector" id="pc-3"></div>
+                <div class="pipe-node" id="pn-4">
+                    <div class="pipe-node__dot"></div>
+                    <div class="pipe-node__label">Business Engine<br><span>Tính giờ &amp; đối chiếu</span></div>
+                </div>
+                <div class="pipe-connector" id="pc-4"></div>
+                <div class="pipe-node" id="pn-5">
+                    <div class="pipe-node__dot"></div>
+                    <div class="pipe-node__label">Export<br><span>FPT QA Report</span></div>
+                </div>
+            </div>
+
+            <div class="terminal" id="terminal">
+                <div class="terminal__bar">
+                    <span class="terminal__dot" style="background:#ff5f57"></span>
+                    <span class="terminal__dot" style="background:#ffbd2e"></span>
+                    <span class="terminal__dot" style="background:#28c940"></span>
+                    <span class="terminal__title">fpt-qa-agent v3.0 — master engine sync</span>
+                </div>
+                <div class="terminal__body" id="log-body">
+                    <div class="log system">$ fpt-qa-agent --mode ultimate-sync --ver 10.0 --ui master</div>
+                    <div class="log info">Hệ thống KWSR v10.0 Ultimate khởi tạo. Đang chờ đồng bộ thiết kế...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════
+         SECTION 4 — DASHBOARD
+        ══════════════════════════════════════════════════════ -->
+        <section class="card step-card hidden" id="sec-dashboard">
+            <div class="step-label"><span class="step-num">4</span> Dashboard Kết Quả (Before / After Metrics)</div>
+
+            <!-- New High-Impact Metrics Grid -->
+            <div class="meta-grid" id="meta-grid"></div>
+
+            <div class="dashboard-grid">
+                <div class="chart-box">
+                    <div class="chart-box__title">Phân bố Tổng Giờ GV <span>(Top 15 Account)</span></div>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-box__title">Before / After — Tổng quan làm sạch</div>
+                    <table class="ba-table" id="ba-table">
+                        <thead>
+                            <tr>
+                                <th>Chỉ số</th>
+                                <th>Raw (Trước)</th>
+                                <th>Cleaned (Sau)</th>
+                                <th>Δ</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <div class="export-row">
+                        <button class="btn btn--green btn--full" id="btn-export">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            💾 Xuất Excel (Bản v10.0 Ultimate)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert-section hidden" id="discrepancy-section" style="margin-top:24px">
+                <div class="alert-section__title" style="color:var(--clr-warning)">🔍 Đối Chiếu Đổi Tiết — Dữ Liệu Sai
+                    Lệch Master Audit</div>
+                <div class="table-scroll">
+                    <table class="detail-table" id="discrepancy-table">
+                        <thead>
+                            <tr>
+                                <th>Ngày</th>
+                                <th>GV gốc (Kế hoạch)</th>
+                                <th>GV dạy thay (Kế hoạch)</th>
+                                <th>GV Thực Tế</th>
+                                <th>Lớp</th>
+                                <th>Audit Status</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div style="margin-top:24px">
+                <div class="alert-section__title" id="full-table-title" style="color:var(--clr-text-muted)">📋 Tổng hợp
+                    giờ giảng Chuẩn v10.0 16 cột</div>
+                <div class="table-scroll">
+                    <table class="detail-table" id="full-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Người dạy</th>
+                                <th>Tiết TH</th>
+                                <th>Tiết THCS</th>
+                                <th>Tiết HSG</th>
+                                <th>Tiết ĐT</th>
+                                <th>Tiết PD</th>
+                                <th>Tiết CLB</th>
+                                <th>Giờ TH</th>
+                                <th>Giờ THCS</th>
+                                <th>Giờ HSG</th>
+                                <th>Giờ ĐT</th>
+                                <th>Giờ PD</th>
+                                <th>Giờ CLB</th>
+                                <th>TỔNG CK</th>
+                                <th>TỔNG CỘNG</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </div><!-- /page-wrapper -->
+
+    <footer class="app-footer">
+        <div class="app-footer__inner">
+            <span>© 2026 FPT Education QA Department</span>
+            <span>KWSR Agent v10.0 | Sync Logic Ultimate</span>
+            <span>ISO 21001:2019 Compliant</span>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
